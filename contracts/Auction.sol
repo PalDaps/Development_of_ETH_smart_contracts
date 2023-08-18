@@ -100,7 +100,7 @@ contract AuctionEngine {
     // Функция, которая позволит нам что-либо купить
     function buy(uint index) external payable {
         
-        Auction memory cAuction = auctions[index];
+        Auction storage cAuction = auctions[index];
 
         require(!cAuction.stopped, "Daps: This Auc was stopped!");
 
