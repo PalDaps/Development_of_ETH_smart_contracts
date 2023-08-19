@@ -1,5 +1,6 @@
 // для тестирования npx hardhat test без таблицы
-// 
+// запустить тест с coverage npx hardhat coverage
+// E - мы не преверям момент когда транзакция откачивается
 
 // Вытаскиваем специальную функцию expect с помощью который мы будем ставить ожидания
 const { expect } = require("chai")
@@ -131,7 +132,7 @@ describe("Auction", function() {
             // В buy() передаем индекс нужного аукциона
             // Для того, чтобы пристыковать к транзакции какие-то деньги, то используем тако синтаксик
             // { value: amount }
-            const buyTx = auct.connect(buyer).buy(0, { value: amount })
+            const buyTx = await auct.connect(buyer).buy(0, { value: amount })
 
             // Так. В анонимную функцию мы передаем нашу транзакцию
             // А потом используем проверку to.changeEtherBalance
@@ -154,10 +155,23 @@ describe("Auction", function() {
             // await expect(() => buyTx).to.changeEtherBalance(seller, finalPrice - secondB)
 
             // Ловим события с помощью javaSCRIPT
-            const anime = await expect(buyTx)
+            // По идее ethers делает обращение к журналу событий их как-то выводит??
+            const animeGachist = await expect(buyTx)
                 .to.emit(auct, 'AuctionEnded')
                 .withArgs(0, finalPrice, buyer.address);
-            console.log(anime)
+            console.log(animeGachist)
+
+            // Еще одна проверка и waffle.js
+            // После того как покупка совершилась и аукцион остановился, то запрещается покупать еще один товар
+            await expect(
+
+                // Делаем еще раз тразакцию с покупкой, то есть вызываем функцию buy от аккаунта баера
+                auct.connect(buyer).buy(0, { value: amount })
+
+            ).to.be.revertedWith('Daps: This Auc was stopped!');
+
+            // А вот здесь to.be.revertedWith мы говорим, что транзакция buy будет откачана с сообщением 'Daps: This Auc was stopped!'
+            
         })
     })
 
