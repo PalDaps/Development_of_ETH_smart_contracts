@@ -1,6 +1,7 @@
 // для тестирования npx hardhat test без таблицы
 // запустить тест с coverage npx hardhat coverage
 // E - мы не преверям момент когда транзакция откачивается
+// npx hardhat coverage
 
 // Вытаскиваем специальную функцию expect с помощью который мы будем ставить ожидания
 const { expect } = require("chai")
@@ -71,7 +72,7 @@ describe("Auction", function() {
 
             const amountInEther = 1000000000000000;
             // const amountInWei = ethers.utils.parseEther(amountInEther);
-
+            // console.log(amountInWei)
             // Создаем транзакцию и в этой транзакции мы будем делать создание Auction
             const tx = await auct.createAuction(
 
