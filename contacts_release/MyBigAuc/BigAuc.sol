@@ -2,11 +2,14 @@
 
 pragma solidity ^0.8.9;
 
+import "@openzeppelin/contracts/token/ERC1155/IERC1155Receiver.sol";
+import "./Token.sol";
+
 contract AuctionEngine is IERC1155Receiver {
 
     address private _owner;
 
-    NftsAndTokens private _tokenOrNFT;
+    DapsCollection private _tokenOrNFT;
 
     uint private _aucId;
 
@@ -51,7 +54,7 @@ contract AuctionEngine is IERC1155Receiver {
 
     uint[] private activeAuctions;
 
-    constructor (NftsAndTokens tokenOrNFT) {
+    constructor (DapsCollection tokenOrNFT) {
         _owner = msg.sender;
         _tokenOrNFT = tokenOrNFT;
     }
