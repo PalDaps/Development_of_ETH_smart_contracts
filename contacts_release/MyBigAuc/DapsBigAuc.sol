@@ -107,7 +107,7 @@ contract AuctionEngine is IERC1155Receiver {
         return _idAuction;
     }
 
-    function getStateAuc(uint idAuction) public view returns(AucState) {
+    function getStateAuc(uint idAuction) public view returns(AucState state) {
         if (_auctions[idAuction].startTime == 0) return AucState.Pending;
         if (block.timestamp >= _auctions[idAuction].startTime && _auctions[idAuction].endTime > block.timestamp) return AucState.Active;
         if (block.timestamp >= _auctions[idAuction].endTime) return AucState.Executed;
@@ -158,8 +158,7 @@ contract AuctionEngine is IERC1155Receiver {
         _activeBidders[idAuction].pop();
     }
 
-    function endAuction(uint idAuction) public payable {
-        require(msg.sender == _auctions[idAuction].ownerAuc, "Daps: you are not an owner!");
+    function autoEndAuction(uint idAuction) public {
         require(getStateAuc(idAuction) == AucState.Executed, "Daps: The auction is not over");
         Auction storage auction = _auctions[idAuction];
         auction.stopped = true;
@@ -170,30 +169,30 @@ contract AuctionEngine is IERC1155Receiver {
         uint maxBid = 0;
         (maxBid, tempWinner) = getMaxBid(idAuction);
 
-        deleteActiveAuc(idAuction);
+        // deleteActiveAuc(idAuction);
 
         if (maxBid > 0) {
             winningBidder = tempWinner;
         }
 
         if (winningBidder != address(0)) {
-            _dapsCollection.safeTransferFrom(address(this), winningBidder, auction.idNFT, 1, "0x");
+            // _dapsCollection.safeTransferFrom(address(this), winningBidder, auction.idNFT, 1, "0x");
 
-            _dapsCollection.safeTransferFrom(address(this), auction.ownerAuc, auction.idToken, maxBid, "0x");
+            // _dapsCollection.safeTransferFrom(address(this), auction.ownerAuc, auction.idToken, maxBid, "0x");
             
 
             // Выпускаем ивенты о переводах победителю и создателю аукциона
-            emit NFTTransferredToWinner(address(this), winningBidder, auction.idNFT, 1);
-            emit TokensTransferredToOwnerAuc(address(this), auction.ownerAuc, auction.idToken, maxBid);
+            // emit NFTTransferredToWinner(address(this), winningBidder, auction.idNFT, 1);
+            // emit TokensTransferredToOwnerAuc(address(this), auction.ownerAuc, auction.idToken, maxBid);
 
             // Обновляем информацию о аукционе в стейтДатаБейз контракта
             auction.winner = winningBidder;
             auction.finalPrice = maxBid;
         } else {
        
-            _dapsCollection.safeTransferFrom(address(this), auction.ownerAuc, auction.idNFT, 1, "0x");
+            // _dapsCollection.safeTransferFrom(address(this), auction.ownerAuc, auction.idNFT, 1, "0x");
 
-            emit NFTReturnedToOwnerAuc(address(this), auction.ownerAuc, auction.idNFT, 1);
+            // emit NFTReturnedToOwnerAuc(address(this), auction.ownerAuc, auction.idNFT, 1);
         }
 
     }
@@ -226,6 +225,28 @@ contract AuctionEngine is IERC1155Receiver {
         return (maxBid, winningBidder);
     }
 
+    function endAuction(uint idAuction) public returns(bool) {
+        if (block.timestamp >= _auctions[idAuction].endTime && !_auctions[idAuction].stopped) {
+            autoEndAuction(idAuction);
+            return true;
+        } else return false;
+    }
+
+    function getNFTtoWinner(uint idAuction) public {
+        require(_auctions[idAuction].stopped, "Daps: auction is not over");
+        require(msg.sender == _auctions[idAuction].winner, "Daps: you are not a winner");
+        _dapsCollection.safeTransferFrom(address(this), msg.sender, _auctions[idAuction].idNFT, 1, "0x");
+        emit NFTTransferredToWinner(address(this), _auctions[idAuction].winner, _auctions[idAuction].idNFT, 1);
+        
+    }
+
+    function getTokenToOwnerAuc(uint idAuction) public {
+        require(_auctions[idAuction].stopped, "Daps: auction is not over");
+        require(msg.sender == _auctions[idAuction].ownerAuc, "Daps: you are not an owner of this Auction");
+        _dapsCollection.safeTransferFrom(address(this), _auctions[idAuction].ownerAuc, _auctions[idAuction].idToken, _auctions[idAuction].finalPrice, "0x");
+        emit TokensTransferredToOwnerAuc(address(this), _auctions[idAuction].ownerAuc, _auctions[idAuction].idToken, _auctions[idAuction].finalPrice);
+    }
+
     function getTokenAuc(uint idAuction) public view returns(uint) {
         return _auctions[idAuction].idToken;
     }
@@ -247,17 +268,17 @@ contract AuctionEngine is IERC1155Receiver {
         return _auctions[idAuction].idNFT;
     }
 
-    function onERC1155Received(address operator, address from, uint256 id, uint256 value, bytes calldata data) external returns (bytes4) {
+    function onERC1155Received(address operator, address from, uint256 id, uint256 value, bytes calldata data) external pure returns (bytes4) {
         
         return this.onERC1155Received.selector;
     }
 
-    function onERC1155BatchReceived(address operator, address from, uint256[] calldata ids, uint256[] calldata values, bytes calldata data) external returns (bytes4) {
+    function onERC1155BatchReceived(address operator, address from, uint256[] calldata ids, uint256[] calldata values, bytes calldata data) external pure returns (bytes4) {
         
         return this.onERC1155BatchReceived.selector;
     }
 
-    function supportsInterface(bytes4 interfaceId) external view returns (bool) {
+    function supportsInterface(bytes4 interfaceId) external pure returns (bool) {
         
         return  interfaceId == type(IERC1155Receiver).interfaceId;
     }
