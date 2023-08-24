@@ -158,7 +158,7 @@ contract AuctionEngine is IERC1155Receiver {
         _activeBidders[idAuction].pop();
     }
 
-    function endAuction(uint idAuction) public {
+    function endAuction(uint idAuction) public payable {
         require(msg.sender == _auctions[idAuction].ownerAuc, "Daps: you are not an owner!");
         require(getStateAuc(idAuction) == AucState.Executed, "Daps: The auction is not over");
         Auction storage auction = _auctions[idAuction];
@@ -180,11 +180,15 @@ contract AuctionEngine is IERC1155Receiver {
             _dapsCollection.safeTransferFrom(address(this), winningBidder, auction.idNFT, 1, "0x");
 
             _dapsCollection.safeTransferFrom(address(this), auction.ownerAuc, auction.idToken, maxBid, "0x");
+            
 
+            // Выпускаем ивенты о переводах победителю и создателю аукциона
             emit NFTTransferredToWinner(address(this), winningBidder, auction.idNFT, 1);
             emit TokensTransferredToOwnerAuc(address(this), auction.ownerAuc, auction.idToken, maxBid);
-            // Нужно еще обновить информацию в аукционе
-            // И удалить данные получается
+
+            // Обновляем информацию о аукционе в стейтДатаБейз контракта
+            auction.winner = winningBidder;
+            auction.finalPrice = maxBid;
         } else {
        
             _dapsCollection.safeTransferFrom(address(this), auction.ownerAuc, auction.idNFT, 1, "0x");
@@ -194,7 +198,7 @@ contract AuctionEngine is IERC1155Receiver {
 
     }
     
-    function deleteActiveAuc(uint idAuction) internal {
+    function deleteActiveAuc(uint idAuction) public {
         require(idAuction <= _activeAuctions.length, "Daps: Invalid auction ID");
 
         // Перемещаем последний элемент массива на место удаляемого элемента
@@ -224,6 +228,10 @@ contract AuctionEngine is IERC1155Receiver {
 
     function getTokenAuc(uint idAuction) public view returns(uint) {
         return _auctions[idAuction].idToken;
+    }
+
+    function getETHbalanceContract() public view returns(uint) {
+        return address(this).balance;
     }
 
     function getTimeAuc(uint idAuction) public view returns(uint) {
