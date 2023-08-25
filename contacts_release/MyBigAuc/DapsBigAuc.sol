@@ -260,7 +260,7 @@ contract AuctionEngine is IERC1155Receiver {
     }
 
     function getTimeAuc(uint idAuction) public view returns(uint) {
-        uint time = block.timestamp - _auctions[idAuction].startTime;
+        uint time = _auctions[idAuction].endTime - block.timestamp;
         return time;
     }
 
