@@ -34,7 +34,7 @@ contract AuctionEngine is IERC1155Receiver {
     }
 
 
-    enum AucState {Pending, Active, Executed}
+    enum AucState {Pending, Active, Executed, Completed}
 
     uint private DELAY = 5;
     uint private DURATION = 180;
@@ -133,15 +133,15 @@ contract AuctionEngine is IERC1155Receiver {
         _activeBidders[idAuction].pop();
     }
 
-    function autoEndAuction(uint idAuction) public {
+    function autoEndAuction(uint idAuction) internal returns(uint maxBid, address winningBidder){
         require(getStateAuc(idAuction) == AucState.Executed, "Daps: The auction is not over");
         Auction storage auction = _auctions[idAuction];
         auction.stopped = true;
 
 
-        address winningBidder = address(0);
+        winningBidder = address(0);
         address tempWinner = address(0);
-        uint maxBid = 0;
+        maxBid = 0;
         (maxBid, tempWinner) = getMaxBid(idAuction);
 
         deleteActiveAuc(idAuction);
@@ -151,10 +151,10 @@ contract AuctionEngine is IERC1155Receiver {
         }
 
         if (winningBidder != address(0)) {
-            auction.winner = winningBidder;
-            auction.finalPrice = maxBid;
+            return (maxBid, winningBidder);
         }
         emit EndedAuction(winningBidder, auction.idNFT, maxBid, auction.idToken, idAuction);
+        return (maxBid, winningBidder);
     }
     
     function deleteActiveAuc(uint idAuction) public {
@@ -195,25 +195,43 @@ contract AuctionEngine is IERC1155Receiver {
         return (maxBid, winningBidder);
     }
 
-    function endAuction(uint idAuction) public returns(bool) {
-        if (block.timestamp >= _auctions[idAuction].endTime && !_auctions[idAuction].stopped) {
-            autoEndAuction(idAuction);
-            return true;
-        }
-        return false;
+    function setWinnerInAuction(uint idAuction) public {
+        require(!_auctions[idAuction].stopped, "Daps: this auction is ower!!!");
+        require(block.timestamp >= _auctions[idAuction].endTime, "Daps: this auction is still going on");
+        autoEndAuction(idAuction);
+    }
+
+    function getAllActiveBidders(uint idAuction) public view returns(address[] memory) {
+        return _activeBidders[idAuction];
+    }
+
+    function getFullInfoAuc(uint idAuction) public view returns(Auction memory) {
+        return _auctions[idAuction];
     }
 
     function getNFTtoWinner(uint idAuction) public {
+        address winner = address(0);
+        (, winner) = autoEndAuction(idAuction);
+        require(winner != address(0), "The winner is not determined");
         require(_auctions[idAuction].stopped, "Daps: auction is not over");
-        require(msg.sender == _auctions[idAuction].winner, "Daps: you are not a winner");
+        require(msg.sender == winner, "Daps: You're not a winner");
+        require(msg.sender != _auctions[idAuction].winner, "Daps: The winner has already taken NFT");
+
+        _auctions[idAuction].winner = msg.sender;
         dapsCollection.safeTransferFrom(address(this), msg.sender, _auctions[idAuction].idNFT, 1, "0x");
         emit NFTTransferredToWinner(address(this), _auctions[idAuction].winner, _auctions[idAuction].idNFT, 1, idAuction);
         
     }
 
     function getTokenToOwnerAuc(uint idAuction) public {
+        uint maxBid = 0;
+        (maxBid ,) = autoEndAuction(idAuction);
+        
+        require(maxBid != 0, "The max bid is not determined");
         require(_auctions[idAuction].stopped, "Daps: auction is not over");
         require(msg.sender == _auctions[idAuction].ownerAuc, "Daps: you are not an owner of this Auction");
+        require(maxBid != _auctions[idAuction].finalPrice, "The creator of the auction has already taken the tokens for sale");
+
         dapsCollection.safeTransferFrom(address(this), _auctions[idAuction].ownerAuc, _auctions[idAuction].idToken, _auctions[idAuction].finalPrice, "0x");
         emit TokensTransferredToOwnerAuc(address(this), _auctions[idAuction].ownerAuc, _auctions[idAuction].idToken, _auctions[idAuction].finalPrice, idAuction);
     }
