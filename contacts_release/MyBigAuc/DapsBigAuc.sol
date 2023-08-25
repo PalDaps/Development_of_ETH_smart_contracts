@@ -86,16 +86,31 @@ contract AuctionEngine is IERC1155Receiver {
         emit StartedAuction(msg.sender, idNFT_, startPrice_, idToken_, _idAuction);
         return _idAuction;
     }
-
+    
     function getStateAuc(uint idAuction) public view returns(AucState state) {
         if (_auctions[idAuction].startTime == 0) return AucState.Pending;
         if (block.timestamp >= _auctions[idAuction].startTime && _auctions[idAuction].endTime > block.timestamp) return AucState.Active;
         if (block.timestamp >= _auctions[idAuction].endTime) return AucState.Executed;
     }
 
+    function isCorrectPrice(uint idAuction, uint amount) internal view returns(bool) {
+        
+        mapping(address => uint) storage bids = _auctionBids[idAuction];
+
+        for (uint i = 0; i < _activeBidders[idAuction].length; i++) {
+            address bidder = _activeBidders[idAuction][i];
+            uint bidAmount = bids[bidder];
+
+            if (bidAmount == amount) {
+                return false;
+            }
+        }
+        return true;
+    }
     function offerPrice(uint idAuction, uint amount) public {
         require(getStateAuc(idAuction) == AucState.Active, "Daps: Auction is not active");
-        require(amount > _auctions[idAuction].finalPrice, "Daps: Amount should be higher than current highest bid");
+        require(amount >= _auctions[idAuction].startPrice, "Daps: Amount should be higher than start bid");
+        require(isCorrectPrice(idAuction, amount), "Daps: The exact same amount has already been offered, raise the bid");
 
         _auctionBids[idAuction][msg.sender] = amount;
         _activeBidders[idAuction].push(msg.sender);
@@ -144,8 +159,6 @@ contract AuctionEngine is IERC1155Receiver {
         maxBid = 0;
         (maxBid, tempWinner) = getMaxBid(idAuction);
 
-        deleteActiveAuc(idAuction);
-
         if (maxBid > 0) {
             winningBidder = tempWinner;
         }
@@ -157,7 +170,7 @@ contract AuctionEngine is IERC1155Receiver {
         return (maxBid, winningBidder);
     }
     
-    function deleteActiveAuc(uint idAuction) public {
+    function deleteActiveAuc(uint idAuction) internal {
         require(_activeAuctions.length > 0, "Daps: there are no an active auctions");
         uint indexOfDeletingAuc = 0;
         if (_activeAuctions.length > 1) {
@@ -198,6 +211,7 @@ contract AuctionEngine is IERC1155Receiver {
     function setWinnerInAuction(uint idAuction) public {
         require(!_auctions[idAuction].stopped, "Daps: this auction is ower!!!");
         require(block.timestamp >= _auctions[idAuction].endTime, "Daps: this auction is still going on");
+        deleteActiveAuc(idAuction);
         autoEndAuction(idAuction);
     }
 
@@ -232,6 +246,7 @@ contract AuctionEngine is IERC1155Receiver {
         require(msg.sender == _auctions[idAuction].ownerAuc, "Daps: you are not an owner of this Auction");
         require(maxBid != _auctions[idAuction].finalPrice, "The creator of the auction has already taken the tokens for sale");
 
+        _auctions[idAuction].finalPrice = maxBid;
         dapsCollection.safeTransferFrom(address(this), _auctions[idAuction].ownerAuc, _auctions[idAuction].idToken, _auctions[idAuction].finalPrice, "0x");
         emit TokensTransferredToOwnerAuc(address(this), _auctions[idAuction].ownerAuc, _auctions[idAuction].idToken, _auctions[idAuction].finalPrice, idAuction);
     }
