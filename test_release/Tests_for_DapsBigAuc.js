@@ -37,6 +37,7 @@ describe("DapsBigAuc", function() {
         let idToken = 3
         await dapsCollection.connect(owner).createToken("TokenName", "TKN", 3, 999999);
         await dapsCollection.connect(owner).createNFT(createrOfAuction.address, "KirkaBoga", 12);
+        // test
     })
 
 })
