@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+// npx hardhat test
+// npx hardhat coverage
+
 // ***********************************************************************************************************************************************
 library Strings {
     function toString(uint _value) internal pure returns(string memory) {
