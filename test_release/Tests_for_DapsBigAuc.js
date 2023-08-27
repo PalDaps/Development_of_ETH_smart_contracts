@@ -70,9 +70,11 @@ describe("Tests for DapsBigAuc", function() {
     describe("Daps: tests for createAuction()", function() {
 
     
-        it("Daps: Tests for creating an auction", async function() {
+        it("Daps: Test for default creating an auction", async function() {
 
-            // Создаем 2 аукциона
+            // Создаем 1 аукцион
+            // И три покупателя соревнуются
+            // смотрим их балансы
             const tx1 = await auc.connect(createrOfAuction).createAuction(12, 300, 3, 60)
             await dapscollection.connect(createrOfAuction).setApprovalForAll(auc, 0)
             
@@ -82,13 +84,64 @@ describe("Tests for DapsBigAuc", function() {
             const offerTx2 = await auc.connect(buyer2).offerPrice(1, 301)
             const offerTx3 = await auc.connect(buyer3).offerPrice(1, 302)
 
-            await network.provider.send("evm_increaseTime", [51]);
-            
-            const balanceNFTofCreater = await dapscollection.connect(createrOfAuction).balanceOf(createrOfAuction, 12)
-            const balanceNFTofContract = await dapscollection.connect(createrOfAuction).balanceOf(auc, 12)
+            let balanceBuyer1 = await dapscollection.connect(createrOfAuction).balanceOf(buyer1, 3)
+            let balanceBuyer2 = await dapscollection.connect(createrOfAuction).balanceOf(buyer2, 3)
+            let balanceBuyer3 = await dapscollection.connect(createrOfAuction).balanceOf(buyer3, 3)
+            let balanceNFTofCreater = await dapscollection.connect(createrOfAuction).balanceOf(createrOfAuction, 12)
+            let balanceNFTofContract = await dapscollection.connect(createrOfAuction).balanceOf(auc, 12)
+
+            expect(balanceBuyer1).to.eq(1000 - 300)
+            expect(balanceBuyer2).to.eq(1000 - 301)
+            expect(balanceBuyer3).to.eq(1000 - 302)
             expect(balanceNFTofCreater).to.eq(0)
             expect(balanceNFTofContract).to.eq(1)
 
+            await network.provider.send("evm_increaseTime", [51]);
+            
+
+
+            await auc.connect(buyer1).setWinnerInAuction(1)
+            await auc.connect(buyer1).takeMoneyFromAuc(1, 300)
+            await auc.connect(buyer2).takeMoneyFromAuc(1, 301)
+            await auc.connect(buyer3).getNFTtoWinner(1)
+            await auc.connect(createrOfAuction).getTokenToOwnerAuc(1)
+
+            balanceBuyer1 = await dapscollection.connect(createrOfAuction).balanceOf(buyer1, 3)
+            balanceBuyer2 = await dapscollection.connect(createrOfAuction).balanceOf(buyer2, 3)
+            balanceBuyer3 = await dapscollection.connect(createrOfAuction).balanceOf(buyer3, 12)
+            balanceNFTofCreater = await dapscollection.connect(createrOfAuction).balanceOf(createrOfAuction, 12)
+            balanceNFTofContract = await dapscollection.connect(createrOfAuction).balanceOf(auc, 12)
+
+            expect(balanceBuyer1).to.eq(1000)
+            expect(balanceBuyer2).to.eq(1000)
+            expect(balanceBuyer3).to.eq(1)
+            expect(balanceNFTofCreater).to.eq(0)
+            expect(balanceNFTofContract).to.eq(0)
+
+        })
+
+        it("Daps: test for creating a second auction when there is no NFT", async function() {
+
+            const tx1 = await auc.connect(createrOfAuction).createAuction(12, 300, 3, 60) 
+
+            await expect(auc.connect(createrOfAuction).createAuction(12, 300, 3, 60)).to.be.reverted
+        })
+
+        it("Daps: test for multiple insertion from one person", async function() {
+
+            const tx1 = await auc.connect(createrOfAuction).createAuction(12, 100, 3, 60)
+            await dapscollection.connect(createrOfAuction).setApprovalForAll(auc, 0)
+
+            await network.provider.send("evm_increaseTime", [15]);
+
+            const offerTx1 = await auc.connect(buyer1).offerPrice(1, 1000)
+            const offerTx2 = await auc.connect(buyer2).offerPrice(1, 200)
+            await expect(auc.connect(buyer2).offerPrice(1, 100)).to.be.reverted
+            await expect(auc.connect(buyer2).takeMoneyFromAuc(1, 250)).to.be.reverted
+            await auc.connect(buyer2).takeMoneyFromAuc(1, 200)
+            // await expect(auc.connect(buyer2).takeMoneyFromAuc(1, 100)).to.be.reverted
+            await network.provider.send("evm_increaseTime", [15]);
+            
         })
 
 

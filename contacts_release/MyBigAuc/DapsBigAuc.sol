@@ -111,7 +111,8 @@ contract AuctionEngine is IERC1155Receiver {
         require(getStateAuc(idAuction) == AucState.Active, "Daps: Auction is not active");
         require(amount >= _auctions[idAuction].startPrice, "Daps: Amount should be higher than start bid");
         require(isCorrectPrice(idAuction, amount), "Daps: The exact same amount has already been offered, raise the bid");
-
+        require(_auctionBids[idAuction][msg.sender] == 0, "Daps: You have already bet, first take the previous bet");
+        
         _auctionBids[idAuction][msg.sender] = amount;
         _activeBidders[idAuction].push(msg.sender);
 
@@ -120,11 +121,11 @@ contract AuctionEngine is IERC1155Receiver {
 
     function takeMoneyFromAuc(uint idAuction, uint amount) public {
         
-        require(amount <= _auctionBids[idAuction][msg.sender], "Daps: you dont have money on cotract");
+        require(amount == _auctionBids[idAuction][msg.sender], "Daps: you dont have money on cotract");
         dapsCollection.safeTransferFrom(address(this), msg.sender, _auctions[idAuction].idToken, amount, "0x");
 
         // Чистим данные о msg.sender из таблиц 
-        _auctionBids[idAuction][msg.sender] = 0;
+        _auctionBids[idAuction][msg.sender] -= amount;
         removeBidder(idAuction, msg.sender);
     }
 
