@@ -5,6 +5,11 @@ pragma solidity ^0.8.9;
 import "@openzeppelin/contracts/token/ERC1155/IERC1155Receiver.sol";
 import "./DapsCollection.sol";
 
+// Преложения по улучшению
+// 1. Нужно проверить, что createrOfAuction не может ставить на свой аукцион
+// 2. Вызов функции setWinnerAuc можно логически оптимизировать
+// 3. Нужно проверить момент, когда никто не выйграл.
+
 contract AuctionEngine is IERC1155Receiver {
 
     event NFTTransferredToWinner(address contractFrom, address winningBidderTo, uint idNFT, uint amount, uint idAuction);
@@ -58,6 +63,7 @@ contract AuctionEngine is IERC1155Receiver {
     function createAuction(uint idNFT_, uint startPrice_, uint idToken_, uint duration_) public returns(uint){
         require(dapsCollection.balanceOf(msg.sender, idNFT_) != 0, "Daps: you don't have a NFT");
         require(duration_ <= 2 days, "Daps: to much duration for auction");
+        require(dapsCollection.exists(idToken_), "Daps: this token is not exist");
 
         uint correctDuration = duration_ == 0 ? DURATION : duration_;
 
