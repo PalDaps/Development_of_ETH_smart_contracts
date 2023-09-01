@@ -24,6 +24,8 @@ contract ReentrancyContractAuction {
         locked = false;
     }
 
+    // Подход называется "pull"
+    // Так как человек по своей инициативе забирает денежные средства
     // Фукнция, которая нужна для выплаты возврата средств юзерам
     function refund() external NoReentrancy{
 
