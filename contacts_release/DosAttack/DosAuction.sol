@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+// Denial of Service
 pragma solidity ^0.8.9;
 
 contract DosAuction {
